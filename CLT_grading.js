@@ -1,23 +1,28 @@
-const fs = require('fs');
 const csv = require('csvtojson');
 const jStat = require('jStat').jStat;
 const seedrandom = require('seedrandom');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
-const inputfile = './file.csv';
-const outputfile = './scores.csv';
+const inputfile = process.argv[2]; //'./file.csv'
+const outputfile = process.argv[3]; //'./scores.csv'
 const scores = new Array();
 const questionIDs = ['219354', '219355', '219356', '219357', '219358', '219359', '219360',
 						'219363', '219364', '219365', '219366', '219367',
 						'219370', '219371',
 						'219374', '219375'];
+const verbose = process.argv[4];
+
 
 csv()
 .fromFile(inputfile)
 .then((jsonObj)=>{ // jsonObj: an array of maps
 	Object.values(jsonObj).forEach(student => {
 		let seed = student.sis_id; //UNI id
+		if (seed.length == 0) {
+			return;
+		}
 		let correct = 0;
+		let wrongs = [];
 
 		// question set: constructor(seed, distType, mean, stdDev, populationSize, sampleSize, nSamples)
 		let qs1 = new Sample(seed, 'normal', 0, 4, 10000, 25, 100);
@@ -29,15 +34,6 @@ csv()
 		let q5 = qs1.getSampleMean(4);
 		let q6 = qs1.getNumbersLessThan(-3);
 		let q7 = qs1.getNumbersLessThan(-3, qs1.nSamples-1);
-		console.log(seed);
-		console.log(q1);
-		console.log(q2);
-		console.log(q3);
-		console.log(q4);
-		console.log(q5);
-		console.log(q6);
-		console.log(q7);
-		console.log('\n');
 
 		let qs2 = new Sample(seed, 'skew_right', 0, 4, 10000, 100, 500);
 		let q9 = qs2.getSampleValue(0, 0);
@@ -45,26 +41,38 @@ csv()
 		let q11 = qs2.getSampleValue(qs2.sampleSize-1, 1);
 		let q12 = qs2.getNumbersGreaterThan(4, 1);
 		let q13 = qs2.getNumbersGreaterThan(4);
-		console.log(q9);
-		console.log(q10);
-		console.log(q11);
-		console.log(q12);
-		console.log(q13);
-		console.log('\n');
 
 		let qs3 = new Sample(seed, 'skew_right', 0, 4, 10000, 5, 500);
 		let q15 = qs3.getSampleValue(0, 0);
 		let q16 = qs3.getSampleMean(4);
-		console.log(q15);
-		console.log(q16);
-		console.log('\n');
 
 		let qs4 = new Sample(seed, 'normal', 0, 4, 10000, 5, 1000);
 		let q18 = qs4.getSampleValue(0, 0);
 		let q19 = qs4.getSampleMean(4);
-		console.log(q18);
-		console.log(q19);		
-		console.log('\n');
+
+		if (verbose) {
+			console.log('Seed is: ' + seed);
+			console.log(q1);
+			console.log(q2);
+			console.log(q3);
+			console.log(q4);
+			console.log(q5);
+			console.log(q6);
+			console.log(q7);
+			console.log('\n');
+			console.log(q9);
+			console.log(q10);
+			console.log(q11);
+			console.log(q12);
+			console.log(q13);
+			console.log('\n');
+			console.log(q15);
+			console.log(q16);
+			console.log('\n');
+			console.log(q18);
+			console.log(q19);		
+			console.log('\n');
+		}
 
 		let correctAnswers = [q1, q2, q3, q4, q5, q6, q7,
 							q9, q10, q11, q12, q13,
@@ -74,17 +82,23 @@ csv()
 		questionIDs.forEach((questionID, index) => {
 			Object.entries(student).forEach((entry) => {
 				if (entry[0].toString().startsWith(questionID)) {
+					if (verbose) {
+						console.log(questionID + '  ' + entry[1] + '  ' + correctAnswers[index]);
+					}
 					if (entry[1].toString() == correctAnswers[index]) {
-						console.log(questionID + '  ' + entry[1]);
 						correct += 1;
+					} else {
+						wrongs.push(questionID);
 					}
 				}
 			});
 		});
 		
-		console.log('Score is: ' + correct + '\n\n'); 
+		if (verbose) {
+			console.log(seed + '  ' + 'score: ' + correct + '  ' + wrongs.toString() + '\n\n'); 
+		}
 
-		scores.push({uni: seed, score: correct});
+		scores.push({uni: seed, score: correct, wrongs: wrongs.join(',')});
 	});
 
 
@@ -92,7 +106,8 @@ csv()
 	  	path: outputfile,
 	  	header: [
 		    {id: 'uni', title: 'UNI'},
-		    {id: 'score', title: 'Score'}
+		    {id: 'score', title: 'Score'},
+		    {id: 'wrongs', title: 'Wrong Answers'}
 	  	]
 	});
 
@@ -150,7 +165,6 @@ class Sample {
 	    }
 	}
 
-
 	runSample() {
 	    // Use the base64 encoding of the seed as a simple hash
 	    let saltedSeed = this.seed + this.populationSize + this.mean + this.stdDev + this.distType;
@@ -200,18 +214,4 @@ class Sample {
 		}
 		return this.samples[sampleIndex].filter(mean => mean < value).length;
 	}
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

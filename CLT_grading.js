@@ -98,7 +98,7 @@ csv()
 			console.log(seed + '  ' + 'score: ' + correct + '  ' + wrongs.toString() + '\n\n'); 
 		}
 
-		scores.push({uni: seed, score: correct, wrongs: wrongs.join(',')});
+		scores.push({uni: seed, score: correct, wrongs: wrongs.join(', ')});
 	});
 
 
